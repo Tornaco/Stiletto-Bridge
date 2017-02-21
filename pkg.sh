@@ -1,0 +1,1 @@
+tar -cf stiletto.file ./*
