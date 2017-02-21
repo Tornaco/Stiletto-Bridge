@@ -1,12 +1,68 @@
 package com.android.commands.stiletto;
 
+import android.os.Binder;
+import com.android.commands.stiletto.api.power.PowerAPI;
+import com.android.commands.stiletto.api.sample.SampleAPI;
+
 /**
  * Created by guohao4 on 2/21/17.
  */
 public class StilettoCmd implements Runnable {
 
-    enum CommandVerb {
-        UNSPECIFIED
+    enum CommandVerb implements APIFetcher{
+        POWER {
+            @Override
+            public StilettoAPI getAPI() {
+                return new PowerAPI();
+            }
+        },
+        PKG {
+            @Override
+            public StilettoAPI getAPI() {
+                return null;
+            }
+        },
+        AM {
+            @Override
+            public StilettoAPI getAPI() {
+                return null;
+            }
+        },
+        SETTINGS {
+            @Override
+            public StilettoAPI getAPI() {
+                return null;
+            }
+        },
+        SAMPLE {
+            @Override
+            public StilettoAPI getAPI() {
+                return new SampleAPI();
+            }
+        },
+        UNSPECIFIED {
+            @Override
+            public StilettoAPI getAPI() {
+                return null;
+            }
+        };
+
+        static CommandVerb from(String arg) {
+            for (CommandVerb c : values()) {
+                if (arg.equalsIgnoreCase(c.name())) {
+                    return c;
+                }
+            }
+            return UNSPECIFIED;
+        }
+    }
+
+    interface APIFetcher {
+        StilettoAPI getAPI();
+    }
+
+    class FakeService extends Binder {
+
     }
 
     static String[] mArgs;
@@ -49,27 +105,20 @@ public class StilettoCmd implements Runnable {
     @Override
     public void run() {
 
-        String arg;
-        boolean valid = false;
-        try {
-            while ((arg = nextArg()) != null) {
-                print("arg=" + arg);
-            }
-        } catch (Exception e) {
-            valid = false;
-        }
+        long uid = Binder.getCallingUid();
+        print("uid:" + uid);
+        long pid = Binder.getCallingPid();
+        print("pid:" + pid);
 
-        if (valid) {
-            try {
-               switch (mVerb) {
+        Binder.clearCallingIdentity();
 
-               }
-            } catch (Exception e) {
-                print("Error while accessing settings provider");
-                e.printStackTrace();
-            }
-        } else {
-            printUsage();
+        String arg = nextArg();
+        mVerb = CommandVerb.from(arg);
+        print("verb=" + mVerb);
+        if (mVerb == CommandVerb.UNSPECIFIED) {
+            print("Bad arg:" + arg);
+            return;
         }
+        mVerb.getAPI().parse(nextArg());
     }
 }
